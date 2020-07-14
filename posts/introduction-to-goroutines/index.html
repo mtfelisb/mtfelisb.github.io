@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en-us">
+<head>
+    
+        
+<meta charset="utf-8">
+<meta name="HandheldFriendly" content="True">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="referrer" content="no-referrer-when-downgrade">
+
+<title>Introduction to Goroutines - mtfelisb</title>
+<meta name="description" content="A Software Engineer">
+
+<link rel="icon" type="image/x-icon" href="https://mtfelisb.com/favicon.ico">
+<link rel="apple-touch-icon-precomposed" href="https://mtfelisb.com/favicon.png">
+
+<link rel="stylesheet" href="https://mtfelisb.com/css/style.css?rnd=1594692475" />
+
+
+
+<meta property="og:title" content="Introduction to Goroutines" />
+<meta property="og:description" content="How to invalidate the cache? There is a better name? Long-lived questions in computer science that every programmer had faced or will at some point in time. Concurrent code has also some well-known pitfalls, the necessity of synchronization and communication between processes created a model used by languages like Java and C&#43;&#43;, where the programmer must share memory to communicate leading to another set of problems like deadlocks, starvation, and livelocks." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://mtfelisb.com/posts/introduction-to-goroutines/" />
+<meta property="article:published_time" content="2020-07-12T22:50:17-03:00" />
+<meta property="article:modified_time" content="2020-07-12T22:50:17-03:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Introduction to Goroutines"/>
+<meta name="twitter:description" content="How to invalidate the cache? There is a better name? Long-lived questions in computer science that every programmer had faced or will at some point in time. Concurrent code has also some well-known pitfalls, the necessity of synchronization and communication between processes created a model used by languages like Java and C&#43;&#43;, where the programmer must share memory to communicate leading to another set of problems like deadlocks, starvation, and livelocks."/>
+
+
+
+
+
+
+    
+<script type="application/javascript">
+var doNotTrack = false;
+if (!doNotTrack) {
+	window.ga=window.ga||function(){(ga.q=ga.q||[]).push(arguments)};ga.l=+new Date;
+	ga('create', 'UA-84125643-1', 'auto');
+	
+	ga('send', 'pageview');
+}
+</script>
+<script async src='https://www.google-analytics.com/analytics.js'></script>
+
+
+
+
+    
+</head>
+<body>
+    <a class="skip-main" href="#main">Skip to main content</a>
+    <div class="container">
+        <header> 
+            
+                <h1 class="site-header">
+    <a href="/">mtfelisb</a>
+</h1>
+<nav>
+    
+    
+    <a class="" href="https://mtfelisb.com/posts/" title="archive">archive</a>
+    
+</nav>
+
+            
+        </header>
+        <main id="main" tabindex="-1"> 
+            
+
+    <article class="post">
+        <header>
+            <h1 class="post-title">Introduction to Goroutines</h1>
+        </header>
+        <div class="content">
+            <p>How to invalidate the cache? There is a better name? Long-lived questions in computer science that every programmer had faced or will at some point in time. Concurrent code has also some well-known pitfalls, the necessity of synchronization and communication between processes created a model used by languages like Java and C++, where the programmer must share memory to communicate leading to another set of problems like deadlocks, starvation, and livelocks. This introductory article aims to explain which strategies and patterns are used by Golang in order to achieve concurrency through goroutines.</p>
+<br>
+<h2 id="sequential-programming">Sequential Programming</h2>
+<p>Given the same input, a sequential program will execute the same instructions and produce always the same results. This is determinism. The same order the programmer read the code is the same order it will be executed.
+The code below illustrates it. The main function will call the <code>slowOp</code> and after two seconds it will print <code>slowOp finished</code>, then print <code>main finished</code>. Every time that it runs.</p>
+<br>
+<pre><code>package main
+
+import (
+	&quot;fmt&quot;
+	&quot;time&quot;
+)
+
+func slowOp() {
+	time.Sleep(2 * time.Second)
+	fmt.Println(&quot;slowOp finished&quot;)
+}
+
+func main() {
+	slowOp()
+	fmt.Println(&quot;main finished&quot;)
+}
+</code></pre><br>
+<p>By adding the keyword <code>go</code> before the invocation of <code>slowOp</code>, the function is going to be scheduled by the Go&rsquo;s Scheduler as a goroutine. This produces now a non-deterministic result since there is nothing telling the <code>main</code> goroutine to wait on.</p>
+<br>
+<h2 id="goroutine">Goroutine</h2>
+<p>A goroutine could be compared to an OS thread, but a lightweight one. In fact, many goroutines can be executed within the same kernel thread. The Golang&rsquo;s Scheduler uses a cooperative scheduler strategy called M:N Scheduler, where a number M stands for goroutines to a number N of OS Threads. This strategy enables a fast context switching and better utilization of resources since all cores can be used.</p>
+<br>
+<h2 id="waitgroup">WaitGroup</h2>
+<p>Golang style of programming doesn&rsquo;t enforce the use of low-level synchronization primitives as the norm but still has these available in the <code>sync</code> package, offering tools such as WaitGroup and Mutex.</p>
+<p>Using a WaitGroup, the code works now how it&rsquo;s expected to, by explicitly saying to wait for one task to be performed before finishes the <code>main</code> goroutine.</p>
+<br>
+<pre><code>package main
+
+import (
+	&quot;fmt&quot;
+	&quot;sync&quot;
+	&quot;time&quot;
+)
+
+func slowOp(wg *sync.WaitGroup) {
+	defer wg.Done()
+	time.Sleep(2 * time.Second)
+	fmt.Println(&quot;slowOp finished&quot;)
+}
+
+func main() {
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	go slowOp(&amp;wg)
+	fmt.Println(&quot;main finished&quot;)
+
+	wg.Wait()
+}
+</code></pre><br>
+<h2 id="concurrent-programming">Concurrent Programming</h2>
+<p>In the opposite way of sequential code, the outcome of a concurrent code is non-deterministic, since there is no guarantee of which order the goroutines will be scheduled and executed. These characteristics lead to synchronization problems. However, there are well-known techniques to write concurrent code safely, and they have tradeoffs.</p>
+<br>
+<h2 id="mutex">Mutex</h2>
+<p>The traditional strategy to synchronize access to the state is by using Mutex. Before the read instruction, the programmer must invoke the exclusive access to the state, calling <code>Lock</code>, and then release the exclusiveness by calling <code>Unlock</code>, manually.</p>
+<br>
+<pre><code>package main
+
+import (
+	&quot;fmt&quot;
+	&quot;sync&quot;
+)
+
+type safeCounter struct {
+	v   int
+	mux sync.Mutex
+}
+
+func main() {
+	var wg sync.WaitGroup
+	c := safeCounter{v: 0}
+
+	for i := 0; i &lt; 500; i++ {
+		wg.Add(1)
+
+		go func(c *safeCounter) {
+			c.mux.Lock()
+			defer c.mux.Unlock()
+			c.v++
+			wg.Done()
+		}(&amp;c)
+	}
+
+	wg.Wait()
+
+	fmt.Printf(&quot;%d\n&quot;, c.v) // 500
+}
+</code></pre><br>
+<h2 id="gos-philosophy">Go&rsquo;s Philosophy</h2>
+<p><em>Don’t communicate by sharing memory, share memory by communicating.</em></p>
+<br>
+<p>Go follows the CSP (Communicating Sequential Processes) technique, created by the British computer scientist Charles Antony Richard Hoare. Fun fact: he also created the sorting algorithm quicksort.
+The paper, published in 1978, concluded that input, output, and concurrency should be treated as programming primitives. Through examples, he shows how complex problems could be solved in a simpler manner. The classical way to show synchronization problems, the Dining Philosopher, originate by Edsger Dijkstra, in 1965, was explained by Hoare using his technique.</p>
+<br>
+<h2 id="channels">Channels</h2>
+<p>To communicate and synchronize goroutines, the channels offer a useful and simple manner to accomplish that. When a channel is created using the make function, the reference of this data structure can be passed as an argument to another function, then, the reference made by both receiver and caller is the same. A channel can either receive a message or send it and also can be buffered or unbuffered. The buffered one will have a queue of messages inside of it, while unbuffered, the default, doesn&rsquo;t have. This makes the sender block until the receiver has, int fact, received the message.
+The code below shows how to send a message to a channel, and how to naturally have a concurrent code written in Golang.</p>
+<br>
+<pre><code>package main
+
+import &quot;fmt&quot;
+
+func sum(a int, b int, ch chan int) {
+	ch &lt;- a + b // send the result to the channel
+}
+
+func main() {
+	ch := make(chan int)
+
+	go sum(1, 5, ch)
+	go sum(10, 50, ch)
+
+	x, y := &lt;-ch, &lt;-ch // receive both messages
+
+	fmt.Printf(&quot;x: %d; y: %d; sum: %d\n&quot;, x, y, x+y) // x: 60; y: 6; sum: 66
+}
+</code></pre><br>
+<h2 id="conclusion">Conclusion</h2>
+<p>This introductory article presented how Go approaches concurrency, still having the primitives, but following the Hoare&rsquo;s techniques as a philosophy. The programmer doesn&rsquo;t need to focus on how to manage threads, thread pool size, or trust in third-party libraries to handle the complexities of concurrent code. The main focus is the business rules to be applied.</p>
+<br>
+<hr>
+<br>
+<p>There are advanced topics that deserve solo articles, such as Channels, Garbage Collection, Memory Management, Memory Allocation, and Golang&rsquo;s Scheduler just to name a few. Given the complexity of these topics, the research needs to reach a deep level, so&hellip; I&rsquo;ll be back.</p>
+<br>
+<h1 id="references">References</h1>
+<ul>
+<li><a href="https://www.amazon.com/Programming-Language-Addison-Wesley-Professional-Computing-ebook/dp/B0184N7WWS/">The Go Programming Language</a></li>
+<li><a href="https://www.amazon.com/Concurrency-Go-Tools-Techniques-Developers/dp/1491941197">Concurrency in Go</a></li>
+<li><a href="https://spinroot.com/courses/summer/Papers/hoare_1978.pdf">Communicating Sequential Processes</a></li>
+<li><a href="https://www.doc.ic.ac.uk/~jnm/concurrency/online/concurrent/index.htm">Concurrent programming</a></li>
+<li><a href="https://tour.golang.org/concurrency/1">Tour of Go</a></li>
+</ul>
+<br>
+        </div>
+        
+
+    
+
+
+<div class="post-info">
+    
+        <div class="post-date">2020-07-12</div>
+    
+    <div class="post-taxonomies">
+        
+            
+                <ul class="post-tags">
+                    
+                        <li><a href="https://mtfelisb.com/tags/golang">#golang</a></li>
+                    
+                </ul>
+        
+    </div>
+</div>
+
+    </article>
+
+    
+        
+    
+
+    
+
+
+        </main>
+        <footer>
+            
+                
+                
+
+                <p>© Matheus Felisberto, 2020<br>
+Powered by <a target="_blank" href="https://gohugo.io/">Hugo</a>, theme <a target="_blank" href="https://github.com/mitrichius/hugo-theme-anubis">Anubis</a>.
+</p>
+            
+        </footer>
+    </div>
+</body>
+</html>

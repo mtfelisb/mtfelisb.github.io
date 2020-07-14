@@ -3,15 +3,28 @@
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   
   <url>
-    <loc>https://mtfelisb.com/categories/</loc>
+    <loc>https://mtfelisb.com/tags/golang/</loc>
+    <lastmod>2020-07-12T22:50:17-03:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>https://mtfelisb.com/posts/introduction-to-goroutines/</loc>
+    <lastmod>2020-07-12T22:50:17-03:00</lastmod>
   </url>
   
   <url>
     <loc>https://mtfelisb.com/</loc>
+    <lastmod>2020-07-12T22:50:17-03:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>https://mtfelisb.com/posts/</loc>
+    <lastmod>2020-07-12T22:50:17-03:00</lastmod>
   </url>
   
   <url>
     <loc>https://mtfelisb.com/tags/</loc>
+    <lastmod>2020-07-12T22:50:17-03:00</lastmod>
   </url>
   
 </urlset>
